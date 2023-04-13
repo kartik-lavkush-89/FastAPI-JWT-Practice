@@ -1,4 +1,6 @@
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Header, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from src.models.user import Signup, Login
 from src.schemas.user import userEntity
 from src.decorators.helper import token_required
@@ -7,7 +9,8 @@ from pymongo import MongoClient
 import os
 import bcrypt
 import jwt
-import datetime
+# import datetime
+from datetime import datetime, timedelta
 import redis
 
 
@@ -26,6 +29,9 @@ conn = MongoClient()
 # Connect to the Redis cache
 redis_cache = redis.Redis(host="localhost", port=6379, db=0)
 
+
+
+templates = Jinja2Templates(directory="templates")
 
 
 #signup route
@@ -78,7 +84,8 @@ async def login(details: Login):
             # Create a new JWT token
             payload = {
                 "email": details.email,
-                "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=30),
+                "iat" : datetime.utcnow(),
+                "exp": datetime.utcnow() + timedelta(minutes=30),
             }
             token = jwt.encode(payload, secret_key, "HS256")
             # Return the token and a success message
@@ -145,3 +152,20 @@ def get_revoked_tokens():
 
 
 
+@api.get("/info/{token}", response_class=HTMLResponse)
+async def token_info(request:Request, token: str):
+    # Decode the token to get the payload
+    try:
+        payload = jwt.decode(token, secret_key, algorithms=["HS256"])
+    except jwt.InvalidTokenError:
+        return {"error": "Invalid token"}
+
+    # Extract the relevant information from the payload
+    email = payload.get("email")
+    info = conn.tokenPractice.data.find_one({"email": email})
+    username = info.get("username")
+    issued_at = datetime.fromtimestamp(payload.get("iat"))
+    expires_at = datetime.fromtimestamp(payload.get("exp"))
+
+    
+    return templates.TemplateResponse("index.html",{"request":request, "username" : username,"email" : email, "token" : token, "issued_at" : issued_at, "expires_at" : expires_at})
