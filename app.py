@@ -18,7 +18,7 @@ sentry_sdk.init(
 # Initialize the FastAPI app
 app = FastAPI()
 
-# Include the app1 router from views.py
+# Include the api router from views.py
 app.include_router(api)
 
 if __name__ == "__main__":

@@ -28,9 +28,11 @@ redis_cache = redis.Redis(host="localhost", port=6379, db=0)
 
 
 
-
+#signup route
+#adding user details to the database
 @api.post("/signup")
 async def signup(user: Signup):
+
     # Check if the phone number already exists
     phone_number = conn.tokenPractice.data.find_one({"phone": user.phone})
     if not phone_number:
@@ -61,9 +63,11 @@ async def signup(user: Signup):
 
 
 
-
+#login route
+#verifying user through credentials
 @api.post("/login")
 async def login(details: Login):
+
     # Check if the email exists
     email_id = conn.tokenPractice.data.find_one({"email": details.email})
     if email_id:
@@ -87,8 +91,10 @@ async def login(details: Login):
 
 
 # protected route
+#retrieving data from database by verifying user through token
 @api.get("/get_data")
 async def get_data(token: str = Header(...)):
+
     # Check if the token is revoked
     if redis_cache.exists(token):
         return {"message": "Unauthorized"}
@@ -102,13 +108,40 @@ async def get_data(token: str = Header(...)):
 
 
 
-
 # logout route
 # blacklisting the token for one hour time using redis
 @api.get("/logout")
 async def logout(token: str = Header(...)):
-    # Store the revoked token in the Redis cache with the expire time in seconds
-    redis_cache.set(token, "revoked", ex=3600)
+
+    # Store the revoked token in the Redis cache 
+    redis_cache.set(token, "revoked", ex=None)
 
     # Return a success message indicating that the user has been logged out
     return {"message": "Logout successful"}
+
+
+
+# this route retrieves all revoked tokens from Redis cache
+# return: A dictionary with a list of revoked tokens
+@api.get("/revoked_tokens")
+def get_revoked_tokens():
+    
+    # Initialize an empty list to store revoked tokens
+    revoked_tokens = []
+
+    # Loop through all keys in Redis cache
+    for key in redis_cache.keys():
+
+        # Get the value for the current key
+        value = redis_cache.get(key)
+
+        # Check if the value for the current key is 'revoked'
+        if value == b"revoked":
+            # If the value is 'revoked', add the current key to the list of revoked tokens
+            revoked_tokens.append(key)
+
+    # Return a dictionary with the list of revoked tokens
+    return {"revoked_tokens": revoked_tokens}
+
+
+
