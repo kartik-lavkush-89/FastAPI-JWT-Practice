@@ -117,21 +117,22 @@ async def get_data(token: str = Header(...)):
 
 # logout route
 # blacklisting the token for one hour time using redis
-@api.get("/logout")
-async def logout(token: str = Header(...)):
+@api.post("/blacklist/{token}")
+async def logout(token : str):
 
     # Store the revoked token in the Redis cache 
-    redis_cache.set(token, "revoked", ex=None)
+    redis_cache.set(token, "revoked", ex=1800)
 
     # Return a success message indicating that the user has been logged out
-    return {"message": "Logout successful"}
+    return {"message": "Token is Blacklisted"}
 
 
 
-# this route retrieves all revoked tokens from Redis cache
+# this route retrieves all revoked tokens value == b"revoked"from Redis cache
 # return: A dictionary with a list of revoked tokens
-@api.get("/revoked_tokens")
-def get_revoked_tokens():
+@api.get("/revoked-tokens", response_class=HTMLResponse)
+def get_revoked_tokens(request : Request):
+
     
     # Initialize an empty list to store revoked tokens
     revoked_tokens = []
@@ -147,25 +148,55 @@ def get_revoked_tokens():
             # If the value is 'revoked', add the current key to the list of revoked tokens
             revoked_tokens.append(key)
 
-    # Return a dictionary with the list of revoked tokens
-    return {"revoked_tokens": revoked_tokens}
+    
+    return templates.TemplateResponse("revoked_tokens.html", {"request": request, "revoked_tokens": revoked_tokens})
+    
+@api.post("/whitelist/{token}")
+def get_revoked_tokens(token):
+    
+    # revoked_tokens = []
 
+    # Loop through all keys in Redis cache
+    for key in redis_cache.keys():
+
+        # Get the value for the current key
+        value = redis_cache.get(key)
+
+        # Check if the value for the current key is 'revoked'
+        if value == b"revoked":
+            # If the value is 'revoked', add the current key to the list of revoked tokens
+            redis_cache.delete(token)
+    return {"message" : "Token is now whitelisted"}
 
 
 @api.get("/info/{token}", response_class=HTMLResponse)
 async def token_info(request:Request, token: str):
+   
+    token_required(token)
+
+    for key in redis_cache.keys():
+
+        value = redis_cache.get(key)
+
+        # Check if the value for the current key is 'revoked'
+    if value == b"revoked":
+
+        if redis_cache.exists(key):
+            return {"message": "Unauthorized"}
+
+    else :
     # Decode the token to get the payload
-    try:
-        payload = jwt.decode(token, secret_key, algorithms=["HS256"])
-    except jwt.InvalidTokenError:
-        return {"error": "Invalid token"}
+        try:
+            payload = jwt.decode(token, secret_key, algorithms=["HS256"])
+        except jwt.InvalidTokenError:
+            return {"error": "Invalid token"}
 
-    # Extract the relevant information from the payload
-    email = payload.get("email")
-    info = conn.tokenPractice.data.find_one({"email": email})
-    username = info.get("username")
-    issued_at = datetime.fromtimestamp(payload.get("iat"))
-    expires_at = datetime.fromtimestamp(payload.get("exp"))
+        # Extract the relevant information from the payload
+        email = payload.get("email")
+        info = conn.tokenPractice.data.find_one({"email": email})
+        username = info.get("username")
+        issued_at = datetime.fromtimestamp(payload.get("iat"))
+        expires_at = datetime.fromtimestamp(payload.get("exp"))
 
-    
-    return templates.TemplateResponse("index.html",{"request":request, "username" : username,"email" : email, "token" : token, "issued_at" : issued_at, "expires_at" : expires_at})
+        
+        return templates.TemplateResponse("index.html",{"request":request, "username" : username,"email" : email, "token" : token, "issued_at" : issued_at, "expires_at" : expires_at})
