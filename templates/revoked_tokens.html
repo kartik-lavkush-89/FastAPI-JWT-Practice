@@ -19,6 +19,7 @@
             border: 1px solid #ddd;
             text-align: left;
             padding: 8px;
+            overflow-wrap: anywhere;
         }
 
         tr:nth-child(even) {
@@ -27,6 +28,12 @@
 
         tr:hover {
             background-color: #ddd;
+        }
+        @media (max-width: 768px) {
+        tr th:nth-child(3), td:nth-child(3),
+        tr th:nth-child(4), td:nth-child(4) {
+            display: none;
+        }
         }
     </style>
     <meta charset="UTF-8">
@@ -40,11 +47,25 @@
         <tr>
             <th>Serial no.</th>
             <th>Token</th>
+            <th>Blacklist your token</th>
+            <th>Whitelist your token</th>
         </tr>
         {% for token in revoked_tokens %}
         <tr>
             <td>{{ loop.index }}</td>
             <td>{{ token }}</td>
+            <td>
+                <form action="/blacklist/{token}" method="post">
+                    <input type="text" name="{{ token }}" value="{{ token }}" required>
+                    <button type="submit">Blacklist Token</button>
+                </form>
+            </td>
+            <td>
+                <form action="/whitelist/{token}" method="post">
+                    <input type="text" name="{{ token }}" value="{{ token }}" required>
+                    <button type="submit">Whitelist Token</button>
+                </form>
+            </td>
         </tr>
         {% endfor %}
     </table>

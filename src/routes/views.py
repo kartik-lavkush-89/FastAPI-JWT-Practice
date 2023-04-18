@@ -104,8 +104,8 @@ async def login(details: Login):
 async def get_data(token: str = Header(...)):
 
     # Check if the token is revoked
-    if redis_cache.exists(token):
-        return {"message": "Unauthorized"}
+    if redis_cache.sismember("revoked",token):
+         return {"message": "Unauthorized"}
     else:
         # Verify the JWT token and get the user's email
         user_email = token_required(token)
@@ -116,59 +116,40 @@ async def get_data(token: str = Header(...)):
 
 
 
-# logout route
-# blacklisting the token for one hour time using redis
+
 @api.post("/blacklist/{token}")
-async def logout(token : str):
-
-    # Store the revoked token in the Redis cache 
-    redis_cache.set(token, "revoked", ex=1800)
-
-    # Return a success message indicating that the user has been logged out
+async def blacklist(token: str):
+    # Add the token to the Redis cache
+    redis_cache.sadd("revoked",token)
+    
     return {"message": "Token is Blacklisted"}
 
 
 
 
-# # this route retrieves all revoked tokens value == b"revoked"from Redis cache
-# # return: A dictionary with a list of revoked tokens
-@api.get("/revoked-tokens", response_class=HTMLResponse)
-def get_revoked_tokens(request : Request):
-
-    
-    # Initialize an empty list to store revoked tokens
-    revoked_tokens = []
-
-    # Loop through all keys in Redis cache
-    for key in redis_cache.keys():
-
-        # Get the value for the current key
-        value = redis_cache.get(key)
-
-        # Check if the value for the current key is 'revoked'
-        if value == b"revoked":
-            # If the value is 'revoked', add the current key to the list of revoked tokens
-            revoked_tokens.append(key)
-
+@api.get("/revoked-tokens",response_class=HTMLResponse)
+async def get_blacklisted_tokens(request : Request):
+    # Retrieve the list of blacklisted tokens from Redis cache
+    revoked_tokens = list(redis_cache.smembers("revoked"))
     
     return templates.TemplateResponse("revoked_tokens.html", {"request": request, "revoked_tokens": revoked_tokens})
-
 
 
 
 @api.post("/whitelist/{token}")
 async def whitelist(token: str):
     # Delete the token from the Redis cache
-    redis_cache.delete(token)
+    redis_cache.srem("revoked", token)
+    
     return {"message": "Token is Whitelisted"}
-
 
 
 @api.get("/info/{token}", response_class=HTMLResponse)
 async def token_info(request:Request, token: str):
    
+    token_required(token)
 
-    if redis_cache.exists(token):
+    if redis_cache.sismember("revoked",token):
          return {"message": "Unauthorized"}
 
     else :
