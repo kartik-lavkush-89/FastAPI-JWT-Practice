@@ -11,6 +11,7 @@ import bcrypt
 import jwt
 # import datetime
 from datetime import datetime, timedelta
+import time
 import redis
 
 
@@ -128,8 +129,9 @@ async def logout(token : str):
 
 
 
-# this route retrieves all revoked tokens value == b"revoked"from Redis cache
-# return: A dictionary with a list of revoked tokens
+
+# # this route retrieves all revoked tokens value == b"revoked"from Redis cache
+# # return: A dictionary with a list of revoked tokens
 @api.get("/revoked-tokens", response_class=HTMLResponse)
 def get_revoked_tokens(request : Request):
 
@@ -150,39 +152,24 @@ def get_revoked_tokens(request : Request):
 
     
     return templates.TemplateResponse("revoked_tokens.html", {"request": request, "revoked_tokens": revoked_tokens})
-    
+
+
+
+
 @api.post("/whitelist/{token}")
-def get_revoked_tokens(token):
-    
-    # revoked_tokens = []
+async def whitelist(token: str):
+    # Delete the token from the Redis cache
+    redis_cache.delete(token)
+    return {"message": "Token is Whitelisted"}
 
-    # Loop through all keys in Redis cache
-    for key in redis_cache.keys():
-
-        # Get the value for the current key
-        value = redis_cache.get(key)
-
-        # Check if the value for the current key is 'revoked'
-        if value == b"revoked":
-            # If the value is 'revoked', add the current key to the list of revoked tokens
-            redis_cache.delete(token)
-    return {"message" : "Token is now whitelisted"}
 
 
 @api.get("/info/{token}", response_class=HTMLResponse)
 async def token_info(request:Request, token: str):
    
-    token_required(token)
 
-    for key in redis_cache.keys():
-
-        value = redis_cache.get(key)
-
-        # Check if the value for the current key is 'revoked'
-    if value == b"revoked":
-
-        if redis_cache.exists(key):
-            return {"message": "Unauthorized"}
+    if redis_cache.exists(token):
+         return {"message": "Unauthorized"}
 
     else :
     # Decode the token to get the payload

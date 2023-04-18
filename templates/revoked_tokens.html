@@ -38,10 +38,15 @@
     <h2>Revoked Tokens</h2>
     <table>
         <tr>
+            <th>Serial no.</th>
             <th>Token</th>
-        
-            <td>{{ revoked_tokens }}</td>
         </tr>
+        {% for token in revoked_tokens %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ token }}</td>
+        </tr>
+        {% endfor %}
     </table>
 </body>
 </html>
