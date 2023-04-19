@@ -37,6 +37,7 @@
         }
     </style>
     <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="10">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Revoked Tokens</title>
@@ -47,7 +48,6 @@
         <tr>
             <th>Serial no.</th>
             <th>Token</th>
-            <th>Blacklist your token</th>
             <th>Whitelist your token</th>
         </tr>
         {% for token in revoked_tokens %}
@@ -55,15 +55,9 @@
             <td>{{ loop.index }}</td>
             <td>{{ token }}</td>
             <td>
-                <form action="/blacklist/{token}" method="post">
-                    <input type="text" name="{{ token }}" value="{{ token }}" required>
-                    <button type="submit">Blacklist Token</button>
-                </form>
-            </td>
-            <td>
-                <form action="/whitelist/{token}" method="post">
-                    <input type="text" name="{{ token }}" value="{{ token }}" required>
-                    <button type="submit">Whitelist Token</button>
+                <form action="/whitelist/{{token}}" method="post">
+                    
+                    <button type="submit" value="{ token }" required>Whitelist Token</button>
                 </form>
             </td>
         </tr>
