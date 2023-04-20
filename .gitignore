@@ -51,5 +51,6 @@ coverage.xml
 docs/_build/
 
 .env
+config.py
 do_not_push/
 env/

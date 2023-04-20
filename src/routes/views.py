@@ -6,21 +6,15 @@ from src.schemas.user import userEntity
 from src.decorators.helper import token_required
 from dotenv import load_dotenv
 from pymongo import MongoClient
-import os
+from config import SECRET_KEY
 import bcrypt
 import jwt
-
-# import datetime
 from datetime import datetime, timedelta
-import time
 import redis
 
 
 # Load environment variables
 load_dotenv()
-
-# Get the secret key from the environment variables
-secret_key = os.getenv("SECRET_KEY")
 
 # Create a new FastAPI router
 api = APIRouter()
@@ -28,11 +22,12 @@ api = APIRouter()
 # Connect to the MongoDB database
 conn = MongoClient()
 
-# Connect to the Redis cache
+# Connect to the Redis 
 redis_cache = redis.Redis(host="localhost", port=6379, db=0)
 
+# Adding HTML files to projcet
+templates = Jinja2Templates(directory="src/templates")
 
-templates = Jinja2Templates(directory="templates")
 
 
 # signup route
@@ -68,6 +63,7 @@ async def signup(user: Signup):
         raise HTTPException(status_code=404, detail="phone_already_exist!")
 
 
+
 # login route
 # verifying user through credentials
 @api.post("/login")
@@ -85,13 +81,14 @@ async def login(details: Login):
                 "iat": datetime.utcnow(),
                 "exp": datetime.utcnow() + timedelta(minutes=30),
             }
-            token = jwt.encode(payload, secret_key, "HS256")
+            token = jwt.encode(payload, SECRET_KEY, "HS256")
             # Return the token and a success message
             return {"message": "you_are_logged_in_successfully", "token": token}
         # Raise an exception if the password is incorrect
         raise HTTPException(status_code=404, detail="wrong_password!")
     # Raise an exception if the email doesn't exist
     raise HTTPException(status_code=404, detail="email_doesn't_exist!")
+
 
 
 # protected route
@@ -110,6 +107,8 @@ async def get_data(token: str = Header(...)):
         return userEntity(user_data)
 
 
+
+# Route to add token value in redis as 'revoked'
 @api.post("/blacklist/{token}")
 async def blacklist(token: str):
     # Add the token to the Redis cache
@@ -118,6 +117,8 @@ async def blacklist(token: str):
     return {"message": "Token is Blacklisted"}
 
 
+
+# Route to display all token values present in redis as 'revoked' 
 @api.get("/revoked-tokens", response_class=HTMLResponse)
 async def get_blacklisted_tokens(request: Request):
     # Retrieve the list of blacklisted tokens from Redis cache
@@ -132,6 +133,8 @@ async def get_blacklisted_tokens(request: Request):
     )
 
 
+
+# Route to remove the token value from redis 
 @api.post("/whitelist/b'{token}'")
 async def whitelist(token: str):
     # Delete the token from the Redis cache
@@ -140,6 +143,8 @@ async def whitelist(token: str):
     return {"message": "Token is Whitelisted"}
 
 
+
+# Route to display User details extracted from token payload
 @api.get("/info/{token}", response_class=HTMLResponse)
 async def token_info(request: Request, token: str):
 
@@ -151,7 +156,7 @@ async def token_info(request: Request, token: str):
     
         # Decode the token to get the payload
     try:
-        payload = jwt.decode(token, secret_key, algorithms=["HS256"])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
     except jwt.InvalidTokenError:
         return {"error": "Invalid token"}
 
