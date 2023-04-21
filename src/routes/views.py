@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Header, Request
+from fastapi import APIRouter, HTTPException, Header, Request, WebSocketDisconnect, WebSocket
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from src.models.user import Signup, Login
@@ -191,11 +191,10 @@ async def token_info(request: Request, token: str):
     token_required(token)
 
     if redis_cache.sismember("revoked", token):
-        # raise HTTPException(status_code=401, detail="Unauthorized")
         return templates.TemplateResponse("unauthorized.html", {"request" : request})
 
     
-        # Decode the token to get the payload
+    # Decode the token to get the payload
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
     except jwt.InvalidTokenError:
