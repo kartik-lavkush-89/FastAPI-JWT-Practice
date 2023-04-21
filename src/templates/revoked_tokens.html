@@ -14,18 +14,11 @@
         <tr>
             <th>Serial no.</th>
             <th>Token</th>
-            <th>Whitelist your token</th>
         </tr>
         {% for token in revoked_tokens %}
         <tr>
             <td>{{ loop.index }}</td>
             <td>{{ token }}</td>
-            <td>
-                <form action="/whitelist/{{token}}" method="post">
-                    
-                    <button type="submit" value="{ token }" required>Whitelist Token</button>
-                </form>
-            </td>
         </tr>
         {% endfor %}
     </table>

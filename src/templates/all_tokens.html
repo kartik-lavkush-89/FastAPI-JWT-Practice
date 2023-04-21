@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='all_tokens.css') }}">
+    <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="10">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Tokens</title>
+</head>
+<body>
+    <h2>All Tokens</h2>
+    <table>
+        <tr>
+            <th>Serial no.</th>
+            <th>Token</th>
+            <th>Blacklist your token</th>
+            <th>Whitelist your token</th>
+            <th>Show Details</th>
+        </tr>
+        {% for token in all_tokens %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ token }}</td>
+            <td>
+                <form action="/blacklist/{{ token }}" method="post">
+                    {% if token in blacklisted_tokens %}
+                      <button class="button" type="submit" value="{ token }" disabled required>Blacklist Token</button>
+                    {% else %}
+                      <button class="button" type="submit" value="{ token }" required>Blacklist Token</button>
+                    {% endif %}
+                </form>
+            </td>
+            <td>
+                <form action="/whitelist/{{ token }}" method="post">
+                    {% if token in whitelisted_tokens %}
+                      <button class="button" type="submit" value="{ token }" disabled required>Whitelist Token</button>
+                    {% else %}
+                      <button class="button" type="submit" value="{ token }" required>Whitelist Token</button>
+                    {% endif %}
+                </form>
+            </td>
+            <td>
+                <form action="/info/{{token}}" method="get">
+                    <button class="button" type="submit" value="{ token }" required>Show Details</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    <br>
+    <form action="/revoked-tokens" method="get">
+        <button type="submit">Show Blacklisted Tokens</button>
+    </form>
+</body>
+</html>

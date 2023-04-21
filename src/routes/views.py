@@ -79,9 +79,11 @@ async def login(details: Login):
             payload = {
                 "email": details.email,
                 "iat": datetime.utcnow(),
-                "exp": datetime.utcnow() + timedelta(minutes=30),
+                "exp": datetime.utcnow() + timedelta(minutes=10),
             }
             token = jwt.encode(payload, SECRET_KEY, "HS256")
+            redis_cache.sadd("all_tokens", token)
+            redis_cache.sadd("unrevoked", token)
             # Return the token and a success message
             return {"message": "you_are_logged_in_successfully", "token": token}
         # Raise an exception if the password is incorrect
@@ -108,17 +110,52 @@ async def get_data(token: str = Header(...)):
 
 
 
-# Route to add token value in redis as 'revoked'
-@api.post("/blacklist/{token}")
+# Route to mark token as blacklist
+@api.post("/blacklist/b'{token}'")
 async def blacklist(token: str):
-    # Add the token to the Redis cache
+    # Add the token to the Redis cache saved under revoked list
     redis_cache.sadd("revoked", token)
+    # Removing the token from the Redis cache saved under unrevoked list
+    redis_cache.srem("unrevoked",token)
 
     return {"message": "Token is Blacklisted"}
 
 
 
-# Route to display all token values present in redis as 'revoked' 
+# Route to display All created tokens whie user login
+@api.get("/all-tokens", response_class=HTMLResponse)
+async def get_blacklisted_tokens(request : Request):
+
+    # Retrieve the list of all tokens from Redis cache
+    all_tokens = list(redis_cache.smembers("all_tokens"))
+    # Retrieve the list of blacklisted tokens from Redis cache
+    blacklisted_tokens = list(redis_cache.smembers("revoked"))
+    # Retrieve the list of whitelisted tokens from Redis cache
+    whitelisted_tokens = list(redis_cache.smembers("unrevoked"))
+
+    for token in all_tokens:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, "HS256")
+            expiration_time = datetime.fromtimestamp(payload.get("exp"))
+            if expiration_time < datetime.utcnow():
+                # Removing the token from the Redis cache if token expires
+                redis_cache.srem("all_tokens", token)
+        except jwt.exceptions.ExpiredSignatureError:
+            redis_cache.srem("all_tokens", token)
+
+    return templates.TemplateResponse(
+        "all_tokens.html",
+        {
+            "request" : request,
+            "all_tokens" : list(redis_cache.smembers("all_tokens")),
+            "blacklisted_tokens": blacklisted_tokens,
+            "whitelisted_tokens" : whitelisted_tokens
+        }  
+    )
+
+
+
+# Route to display token values present in redis as 'revoked' 
 @api.get("/revoked-tokens", response_class=HTMLResponse)
 async def get_blacklisted_tokens(request: Request):
     # Retrieve the list of blacklisted tokens from Redis cache
@@ -134,24 +171,28 @@ async def get_blacklisted_tokens(request: Request):
 
 
 
-# Route to remove the token value from redis 
+# Route to mark token as whitelist 
 @api.post("/whitelist/b'{token}'")
 async def whitelist(token: str):
-    # Delete the token from the Redis cache
+    # Removing the token from the Redis cache saved under revoked list
     redis_cache.srem("revoked",token)
+    # Add the token to the Redis cache saved under unrevoked list
+    redis_cache.sadd("unrevoked",token)
 
     return {"message": "Token is Whitelisted"}
 
 
 
+
 # Route to display User details extracted from token payload
-@api.get("/info/{token}", response_class=HTMLResponse)
+@api.get("/info/b'{token}'", response_class=HTMLResponse)
 async def token_info(request: Request, token: str):
 
     token_required(token)
 
     if redis_cache.sismember("revoked", token):
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        # raise HTTPException(status_code=401, detail="Unauthorized")
+        return templates.TemplateResponse("unauthorized.html", {"request" : request})
 
     
         # Decode the token to get the payload

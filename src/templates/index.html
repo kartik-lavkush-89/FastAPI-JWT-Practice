@@ -3,7 +3,7 @@
 <head>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='index.css') }}">
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="10">
+    <!-- <meta http-equiv="refresh" content="10"> -->
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Token Info</title>
@@ -32,13 +32,5 @@
             <td>{{ expires_at }}</td>
         </tr>
     </table>
-    <br>
-    <form action="/blacklist/{{token}}" method="post">
-        <button type="submit" value="{ token }" required>Blacklist Token</button>
-    </form>
-    <br>
-    <form action="/revoked-tokens" method="get">
-        <button type="submit">Show Revoked Tokens</button>
-    </form>
 </body>
 </html>
