@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Header, Request, WebSocketDisconnect, WebSocket
+from fastapi import APIRouter, HTTPException, Header, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from src.models.user import Signup, Login
@@ -6,7 +6,7 @@ from src.schemas.user import userEntity
 from src.decorators.helper import token_required
 from dotenv import load_dotenv
 from pymongo import MongoClient
-from config import SECRET_KEY
+from config import SECRET_KEY, connected_websockets
 import bcrypt
 import jwt
 from datetime import datetime, timedelta
@@ -63,7 +63,6 @@ async def signup(user: Signup):
         raise HTTPException(status_code=404, detail="phone_already_exist!")
 
 
-
 # login route
 # verifying user through credentials
 @api.post("/login")
@@ -83,6 +82,10 @@ async def login(details: Login):
             }
             token = jwt.encode(payload, SECRET_KEY, "HS256")
             redis_cache.sadd("all_tokens", token)
+            
+            for websocket in connected_websockets:
+                await websocket.send_text("Token added to all_tokens")
+            
             redis_cache.sadd("unrevoked", token)
             # Return the token and a success message
             return {"message": "you_are_logged_in_successfully", "token": token}
@@ -115,8 +118,13 @@ async def get_data(token: str = Header(...)):
 async def blacklist(token: str):
     # Add the token to the Redis cache saved under revoked list
     redis_cache.sadd("revoked", token)
+    for websocket in connected_websockets:
+        await websocket.send_text("Token added to revoked")
+
     # Removing the token from the Redis cache saved under unrevoked list
     redis_cache.srem("unrevoked",token)
+    for websocket in connected_websockets:
+        await websocket.send_text("Token removed from unrevoked")
 
     return {"message": "Token is Blacklisted"}
 
@@ -124,7 +132,8 @@ async def blacklist(token: str):
 
 # Route to display All created tokens whie user login
 @api.get("/all-tokens", response_class=HTMLResponse)
-async def get_blacklisted_tokens(request : Request):
+async def get_all_tokens(request : Request):
+# async def get_all_tokens(request : Request, websocket : WebSocket):
 
     # Retrieve the list of all tokens from Redis cache
     all_tokens = list(redis_cache.smembers("all_tokens"))
@@ -138,8 +147,12 @@ async def get_blacklisted_tokens(request : Request):
             payload = jwt.decode(token, SECRET_KEY, "HS256")
             expiration_time = datetime.fromtimestamp(payload.get("exp"))
             if expiration_time < datetime.utcnow():
+
                 # Removing the token from the Redis cache if token expires
                 redis_cache.srem("all_tokens", token)
+                for websocket in connected_websockets:
+                    await websocket.send_text("Token removed from all_tokens")
+
         except jwt.exceptions.ExpiredSignatureError:
             redis_cache.srem("all_tokens", token)
 
@@ -176,8 +189,13 @@ async def get_blacklisted_tokens(request: Request):
 async def whitelist(token: str):
     # Removing the token from the Redis cache saved under revoked list
     redis_cache.srem("revoked",token)
+    for websocket in connected_websockets:
+        await websocket.send_text("Token removed from revoked")
+        
     # Add the token to the Redis cache saved under unrevoked list
     redis_cache.sadd("unrevoked",token)
+    for websocket in connected_websockets:
+        await websocket.send_text("Token added to unrevoked")
 
     return {"message": "Token is Whitelisted"}
 

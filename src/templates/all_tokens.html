@@ -3,20 +3,10 @@
 <head>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='all_tokens.css') }}">
     <meta charset="UTF-8">
-    <!-- <meta http-equiv="refresh" content="10"> -->
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>All Tokens</title>
-    <script>
-        const ws = new WebSocket("ws://localhost:8000/ws");
-
-        
-        ws.addEventListener("data", (event) => {
-            // Reload the page when a new message is received
-            
-            location.reload();
-        });
-    </script>
+    
 </head>
 <body>
     <h2>All Tokens</h2>
@@ -31,7 +21,7 @@
         {% for token in all_tokens %}
         <tr>
             <td>{{ loop.index }}</td>
-            <td>{{ token }}</td>
+            <td id="tokena">{{ token }}</td>
             <td>
                 <form action="/blacklist/{{ token }}" method="post">
                     {% if token in blacklisted_tokens %}
@@ -56,13 +46,18 @@
                 </form>
             </td>
         </tr>
-        
         {% endfor %}
     </table>
     <br>
-    <!-- <form action="/revoked-tokens" method="get">
-        <button type="submit">Show Blacklisted Tokens</button>
-    </form> -->
+    <script>
+        const ws = new WebSocket("ws://localhost:8000/ws");
+    
+        ws.addEventListener("message", (event) => {
+            // Reload the page when a new message is received
+            location.reload();
+        });
+    </script>
+    
     
 </body>
 </html>
