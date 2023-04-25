@@ -14,3 +14,18 @@ def userEntity(item) -> dict:
         "email": item["email"],
         "phone": item["phone"],
     }
+
+
+
+
+''' Entity for employee task '''
+
+def employeeEntity(item) -> dict:
+    return {
+        "username": item["username"],
+        "email": item["email"],
+        "phone": item["phone"]
+    }
+
+def employeesEntity(entity) -> list:
+    return [employeeEntity(item) for item in entity]

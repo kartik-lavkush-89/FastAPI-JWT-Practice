@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Header, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from src.models.user import Signup, Login
-from src.schemas.user import userEntity
+from src.models.user import Signup, Login, Employee, Get, Time
+from src.schemas.user import userEntity, employeeEntity, employeesEntity
 from src.decorators.helper import token_required
 from dotenv import load_dotenv
 from pymongo import MongoClient
@@ -236,3 +236,45 @@ async def token_info(request: Request, token: str):
             "expires_at": expires_at,
         }
     )
+
+'''  Employee Task   '''
+
+@api.post("/add-employee")
+async def addEmployee(details : Employee):
+    for i in range(10):
+        data = {
+            "username" : details.username,
+            "email" : details.email,
+            "phone" : details.phone,
+            "created_at" : datetime.utcnow()
+        }
+        conn.database.details.insert_one(dict(data))
+    return {
+        "message" : "user_added"
+    }
+
+
+
+@api.get("/get-data")
+async def getData(details : Get):
+    user_data = conn.database.details.find_one({"username": details.username})
+    return employeeEntity(user_data)
+
+
+
+@api.get("/employees-data")
+async def paginatedData(details : Time):
+    # convert the 'from_date' and 'to_date' fields in the 'details' object to a datetime object
+    from_date = datetime.strptime(details.from_date, '%Y-%m-%d')
+    to_date = datetime.strptime(details.to_date, '%Y-%m-%d')
+
+    page = details.page
+    page_size = details.page_size
+
+    # skip value to get different values at different page
+    skip = (page - 1) * page_size
+    
+    # query variable that filters collection based on the 'created_at' field and the 'from_date' and 'to_date' values
+    query = {"created_at": {"$gte": from_date, "$lt": to_date}}
+    results = conn.database.details.find(query).skip(skip).limit(page_size)
+    return employeesEntity(results)
